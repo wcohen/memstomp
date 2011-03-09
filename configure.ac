@@ -20,7 +20,7 @@
 
 AC_PREREQ(2.61)
 
-AC_INIT([memstomp], 0.1.2, [wcohen (at) redhat (dot) com])
+AC_INIT([memstomp], 0.1.3, [wcohen (at) redhat (dot) com])
 AC_CONFIG_SRCDIR([memstomp.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR(m4)
