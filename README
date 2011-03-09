@@ -4,7 +4,7 @@ GIT:
         clone http://wcohen.fedorapeople.org/git/memstomp/
 
 GITWEB:
-        http://fedorapeople.org/gitweb?p=wcohen/public_git/memstomp.git
+	http://fedorapeople.org/gitweb?p=wcohen/public_git/memstomp;a=summary
 
 NOTES:
 	memstomp checks the operation of memcpy. In particular memstomp
