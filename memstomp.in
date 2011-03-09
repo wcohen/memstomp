@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# This file is part of memstomp.
+#
+# Copyright 2009 Lennart Poettering
+# Copyright 2011 William Cohen
+#
+# memstomp is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# memstomp is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with memstomp. If not, see <http://www.gnu.org/licenses/>.
+
+if ! TEMP=`getopt -o +dhk --long help,debug-info,kill -n memstomp -- "$@"` ; then
+    exit 1
+fi
+
+eval set -- "$TEMP"
+
+debug_info=0
+
+while : ; do
+        case $1 in
+                -k|--kill)
+                        export MEMSTOMP_KILL=1
+                        shift 1
+                        ;;
+
+                -d|--debug-info)
+                        debug_info=1
+                        shift 1
+                        ;;
+
+
+                -h|--help)
+                        cat <<EOF
+@PACKAGE_STRING@
+
+Usage: memstomp [OPTIONS...] APPLICATION [ARGUMENTS...]
+
+COMMANDS:
+  -h, --help                      Show this help
+
+OPTIONS:
+  -d, --debug-info                Make use of debug information in stack traces
+  -k, --kill                      Kill application when problem memcpy occurs
+EOF
+                        exit 0
+                        ;;
+                --)
+                        shift
+                        break
+                        ;;
+
+                *)
+                        echo "Parsing failed!" >&2
+                        exit 1
+                        ;;
+        esac
+done
+
+shift $(($OPTIND-1))
+
+if [ x"$1" = x ] ; then
+        echo "Please specify an application to profile!" >&2
+        exit 1
+fi
+
+if [ x"$LD_PRELOAD" = x ] ; then
+        export LD_PRELOAD="libmemstomp.so"
+else
+        export LD_PRELOAD="$LD_PRELOAD:libmemstomp.so"
+fi
+
+if [ x"$debug_info" = x1 ] ; then
+        export LD_PRELOAD="$LD_PRELOAD:libmemstomp-backtrace-symbols.so"
+fi
+
+exec "$@"
