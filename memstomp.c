@@ -44,9 +44,9 @@
 #endif
 
 #include <signal.h>
-#define KILL_TRAP raise(SIGABRT)
+#define ABRT_TRAP raise(SIGSEGV)
 
-static bool kill_trap = false;
+static bool abrt_trap = false;
 
 #ifndef SCHED_RESET_ON_FORK
 /* "Your libc lacks the definition of SCHED_RESET_ON_FORK. We'll now
@@ -172,7 +172,7 @@ static void setup(void) {
                         "memstomp: useful stack traces.\n\n");
 
         if (getenv("MEMSTOMP_KILL"))
-                kill_trap = true;
+                abrt_trap = true;
 
         initialized = true;
 
@@ -323,7 +323,7 @@ void * memcpy(void * dest, const void * src, size_t count)
 	
 	/* Check for overlap. */
 	if (distance < count) {
-		if (kill_trap) KILL_TRAP;
+		if (abrt_trap) ABRT_TRAP;
 		/* report the overlap */
 		warn_memcpy(dest, src, count);
 	}

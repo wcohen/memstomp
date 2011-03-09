@@ -24,6 +24,9 @@ NOTES:
        situations where locks are taken or memory allocated as we do
        it here. YMMV.
 
+       memstomp also has a '--kill' option that kills the application
+       at the first problem memcpy.
+
        Note that valgrind can perform this type of check also.
        memstomp merely lowers the overhead for this type of check.
 
