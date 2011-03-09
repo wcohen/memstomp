@@ -2651,7 +2651,7 @@ $as_echo "$am_cv_prog_tar_pax" >&6; }
 
 
 
-PACKAGE_URL=http://git.0pointer.de/?p=memstomp.git
+PACKAGE_URL=http://wcohen.fedorapeople.org/git/memstomp/
 
 
 # Make sure we can run config.sub.

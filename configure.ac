@@ -27,7 +27,7 @@ AC_CONFIG_MACRO_DIR(m4)
 
 AM_INIT_AUTOMAKE([foreign 1.10 -Wall -Wno-portability tar-pax])
 
-AC_SUBST(PACKAGE_URL, [http://git.0pointer.de/?p=memstomp.git])
+AC_SUBST(PACKAGE_URL, [http://wcohen.fedorapeople.org/git/memstomp/])
 
 AC_CANONICAL_HOST
 
