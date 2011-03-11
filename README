@@ -1,7 +1,7 @@
 MEMSTOMP memcpy checker
 
 GIT:
-        http://wcohen.fedorapeople.org/git/memstomp/
+        git://fedorapeople.org/home/fedora/wcohen/public_git/memstomp
 
 GITWEB:
 	http://fedorapeople.org/gitweb?p=wcohen/public_git/memstomp;a=summary
