@@ -37,7 +37,6 @@
 #include <unistd.h>
 #include <sys/prctl.h>
 #include <sched.h>
-#include <malloc.h>
 
 #if !defined (__linux__) || !defined(__GLIBC__)
 #error "This stuff only works on Linux!"
