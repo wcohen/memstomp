@@ -308,7 +308,7 @@ void backtrace_symbols_fd(void *const *array, int size, int fd) {
 
 static void warn_memcpy(void * dest, const void * src, size_t count)
 {
-	fprintf(stderr, "memcpy(0x%p, 0x%p, %ld) overlap for %s(%d)\n",
+	fprintf(stderr, "memcpy(%p, %p, %ld) overlap for %s(%d)\n",
 		dest, src, count, get_prname(), getpid());
 	/* generate stack backtrace */
 	fprintf(stderr, "%s", generate_stacktrace());
