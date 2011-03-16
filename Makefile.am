@@ -77,4 +77,8 @@ install-exec-hook:
 	rm -f $(DESTDIR)$(libdir)/libmemstomp.la
 	rm -f $(DESTDIR)$(libdir)/libmemstomp-backtrace-symbols.la
 
+uninstall-hook:
+	rm -f $(DESTDIR)$(libdir)/libmemstomp.so
+	rm -f $(DESTDIR)$(libdir)/libmemstomp-backtrace-symbols.so
+
 ACLOCAL_AMFLAGS = -I m4

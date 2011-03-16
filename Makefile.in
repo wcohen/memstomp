@@ -828,8 +828,9 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-binSCRIPTS uninstall-libLTLIBRARIES
-
-.MAKE: all install-am install-exec-am install-strip
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) uninstall-hook
+.MAKE: all install-am install-exec-am install-strip uninstall-am
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-am clean \
 	clean-generic clean-libLTLIBRARIES clean-libtool ctags dist \
@@ -847,7 +848,7 @@ uninstall-am: uninstall-binSCRIPTS uninstall-libLTLIBRARIES
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	tags uninstall uninstall-am uninstall-binSCRIPTS \
-	uninstall-libLTLIBRARIES
+	uninstall-hook uninstall-libLTLIBRARIES
 
 
 memstomp: memstomp.in Makefile
@@ -858,6 +859,10 @@ memstomp: memstomp.in Makefile
 install-exec-hook:
 	rm -f $(DESTDIR)$(libdir)/libmemstomp.la
 	rm -f $(DESTDIR)$(libdir)/libmemstomp-backtrace-symbols.la
+
+uninstall-hook:
+	rm -f $(DESTDIR)$(libdir)/libmemstomp.so
+	rm -f $(DESTDIR)$(libdir)/libmemstomp-backtrace-symbols.so
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
