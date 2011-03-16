@@ -22,7 +22,6 @@
 
 #include "config.h"
 
-#include <pthread.h>
 #include <execinfo.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -66,11 +65,6 @@ static bool abrt_trap = false;
 
 static unsigned frames_max = 16;
 
-static volatile unsigned n_broken = 0;
-static volatile unsigned n_collisions = 0;
-static volatile unsigned n_self_contended = 0;
-
-
 static void (*real_exit)(int status) __attribute__((noreturn)) = NULL;
 static void (*real__exit)(int status) __attribute__((noreturn)) = NULL;
 static void (*real__Exit)(int status) __attribute__((noreturn)) = NULL;
@@ -78,10 +72,7 @@ static int (*real_backtrace)(void **array, int size) = NULL;
 static char **(*real_backtrace_symbols)(void *const *array, int size) = NULL;
 static void (*real_backtrace_symbols_fd)(void *const *array, int size, int fd) = NULL;
 
-static __thread bool recursive = false;
-
 static volatile bool initialized = false;
-static volatile bool threads_existing = false;
 
 static void setup(void) __attribute ((constructor));
 static void shutdown(void) __attribute ((destructor));
@@ -138,7 +129,6 @@ static void load_functions(void) {
         if (LIKELY(loaded))
                 return;
 
-        recursive = true;
 
         LOAD_FUNC(exit);
         LOAD_FUNC(_exit);
@@ -149,7 +139,6 @@ static void load_functions(void) {
         LOAD_FUNC(backtrace_symbols_fd);
 
         loaded = true;
-        recursive = false;
 }
 
 static void setup(void) {
@@ -213,28 +202,29 @@ static bool verify_frame(const char *s) {
         return true;
 }
 
-static char* generate_stacktrace(void) {
-        char **strings, *ret, *p;
-        int n, i;
-        size_t k;
-        bool b;
-
-        void *buffer[frames_max];  /* c99 or gcc extension */
-
-        n = real_backtrace(buffer, frames_max);
+static char* generate_stacktrace(void)
+{
+        void *retaddr[frames_max];  /* c99 or gcc extension */
+        int const n = real_backtrace(retaddr, frames_max);
         assert(n >= 0);
 
-        strings = real_backtrace_symbols(buffer, n);
+        char **const strings = real_backtrace_symbols(retaddr, n);
         assert(strings);
 
-        k = 0;
-        for (i = 0; i < n; i++)
-                k += strlen(strings[i]) + 2;
+        char *ret;
+	{
+		size_t k = 0;
+		int i;
+		for (i = 0; i < n; i++)
+			k += strlen(strings[i]) + 2;
 
-        ret = malloc(k + 1);
+		ret = malloc(k + 1);
+	}
         assert(ret);
 
-        b = false;
+	char *p;
+        int i;
+	bool b = false;
         for (i = 0, p = ret; i < n; i++) {
                 if (!b && !verify_frame(strings[i]))
                         continue;
@@ -254,48 +244,27 @@ static char* generate_stacktrace(void) {
                 p += strlen(strings[i]);
                 *(p++) = '\n';
         }
-
         *p = 0;
-
         free(strings);
-
         return ret;
 }
 
-int backtrace(void **array, int size) {
-        int r;
-
+int backtrace(void **array, int size)
+{
         load_functions();
-
-        /* backtrace() internally uses a mutex. To avoid an endless
-         * loop we need to disable ourselves so that we don't try to
-         * call backtrace() ourselves when looking at that lock. */
-
-        recursive = true;
-        r = real_backtrace(array, size);
-        recursive = false;
-
-        return r;
+        return real_backtrace(array, size);
 }
 
-char **backtrace_symbols(void *const *array, int size) {
-        char **r;
-
+char **backtrace_symbols(void *const *array, int size)
+{
         load_functions();
-
-        recursive = true;
-        r = real_backtrace_symbols(array, size);
-        recursive = false;
-
-        return r;
+        return real_backtrace_symbols(array, size);
 }
 
-void backtrace_symbols_fd(void *const *array, int size, int fd) {
+void backtrace_symbols_fd(void *const *array, int size, int fd)
+{
         load_functions();
-
-        recursive = true;
         real_backtrace_symbols_fd(array, size, fd);
-        recursive = false;
 }
 
 static void warn_memcpy(void * dest, const void * src, size_t count)
