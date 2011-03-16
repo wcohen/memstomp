@@ -223,7 +223,7 @@ static char* generate_stacktrace(void) {
         size_t k;
         bool b;
 
-        void **const buffer = alloca(sizeof(void*) * frames_max);
+        void *buffer[frames_max];  /* c99 or gcc extension */
 
         n = real_backtrace(buffer, frames_max);
         assert(n >= 0);

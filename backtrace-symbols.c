@@ -45,7 +45,6 @@
 #define false 0
 
 #define _GNU_SOURCE
-#include <alloca.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -324,7 +323,7 @@ char **backtrace_symbols(void /*const*/ *const *const vector, int const length)
 	int const stack_depth = length - 1;
 
 	int total = 0;
-	char ***const locations = alloca(sizeof(char **) * (stack_depth+1));
+	char **locations[1+ stack_depth];  /* c99 or gcc extension */
 
 	bfd_init();
 	int x;
