@@ -80,9 +80,6 @@ static void load_funcs(void)
 #endif
 
 
-/* 150 isn't special; it's just an arbitrary non-ASCII char value.  */
-#define OPTION_DEMANGLER	(150)
-
 /* Read in the symbol table.  */
 
 static asymbol **slurp_symtab(bfd *const abfd)
@@ -187,9 +184,9 @@ static void translate_addresses(bfd *abfd, char (*addr)[PTRSTR_LEN], int naddr)
 }
 #endif
 
-static char ** translate_addresses_buf(
+static char ** translate_addresses_vec(
 	bfd *const abfd,
-	bfd_vma const *const addr,
+	bfd_vma const addr[],
 	int naddr
 )
 {
@@ -257,7 +254,7 @@ static char ** translate_addresses_buf(
 
 static char **process_file(
 	char const *const file_name,
-	bfd_vma const *const addr,
+	bfd_vma const addr[],
 	int const naddr
 )
 {
@@ -280,7 +277,7 @@ static char **process_file(
 		xexit(1);
 	}
 
-	char **const ret_buf = translate_addresses_buf(abfd, addr, naddr);
+	char **const ret_buf = translate_addresses_vec(abfd, addr, naddr);
 	bfd_close(abfd);
 	return ret_buf;
 }
@@ -317,7 +314,7 @@ static int find_matching_file(struct dl_phdr_info *const info,
 	return 0;  /* keep looking */
 }
 
-char **backtrace_symbols(void /*const*/ *const *const vector, int const length)
+char **backtrace_symbols(void /*const*/ *const vector[], int const length)
 {
 	/* discard calling function */
 	int const stack_depth = length - 1;
