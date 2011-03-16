@@ -613,9 +613,6 @@ distdir: $(DISTFILES)
 	  ! -type d ! -perm -400 -exec chmod a+r {} \; -o \
 	  ! -type d ! -perm -444 -exec $(install_sh) -c -m a+r {} {} \; \
 	|| chmod -R a+r "$(distdir)"
-dist-gzip: distdir
-	tardir=$(distdir) && $(am__tar) | GZIP=$(GZIP_ENV) gzip -c >$(distdir).tar.gz
-	$(am__remove_distdir)
 
 dist-bzip2: distdir
 	tardir=$(distdir) && $(am__tar) | bzip2 -9 -c >$(distdir).tar.bz2
@@ -863,6 +860,10 @@ install-exec-hook:
 uninstall-hook:
 	rm -f $(DESTDIR)$(libdir)/libmemstomp.so
 	rm -f $(DESTDIR)$(libdir)/libmemstomp-backtrace-symbols.so
+
+dist-gzip:
+	cd $(srcdir); git status | grep working.directory.clean || (echo "You should commit your changes before 'make rpm'.")
+	(cd $(srcdir); git archive --prefix=memstomp-$(VERSION)/ --format=tar HEAD) | gzip > memstomp-$(VERSION).tar.gz
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

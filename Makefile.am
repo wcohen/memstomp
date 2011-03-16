@@ -81,4 +81,8 @@ uninstall-hook:
 	rm -f $(DESTDIR)$(libdir)/libmemstomp.so
 	rm -f $(DESTDIR)$(libdir)/libmemstomp-backtrace-symbols.so
 
+dist-gzip:
+	cd $(srcdir); git status | grep working.directory.clean || (echo "You should commit your changes before 'make rpm'.")
+	(cd $(srcdir); git archive --prefix=memstomp-$(VERSION)/ --format=tar HEAD) | gzip > memstomp-$(VERSION).tar.gz
+
 ACLOCAL_AMFLAGS = -I m4
