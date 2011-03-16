@@ -267,13 +267,29 @@ void backtrace_symbols_fd(void *const *array, int size, int fd)
         real_backtrace_symbols_fd(array, size, fd);
 }
 
+static int imin(int a, int b)
+{
+	return (a <= b) ? a : b;
+}
+
 static void warn_memcpy(void * dest, const void * src, size_t count)
 {
 	char prname[17];
+	char buf[128];
 
-	fprintf(stderr, "memcpy(%p, %p, %ld) overlap for %s(%d)\n",
+/* Avoid fprintf which is not async signal safe.  fprintf may call malloc,
+ * which may experience trouble if the bad memcpy was called from a signal
+ * handler whose invoking signal interrupted malloc.
+ */
+	int const j = snprintf(buf, sizeof(buf),
+		"\n\nmemcpy(%p, %p, %ld) overlap for %s(%d)\n",
 		dest, src, count, get_prname(prname), getpid());
-	/* generate stack backtrace */
+	write(STDERR_FILENO, buf, imin(j, sizeof(buf)));
+	
+/* If generate_stacktrace() indirectly invokes malloc (such as via libbfd),
+ * then this is not async signal safe.  But the write() above will produce
+ * some evidence before any possible trouble below.
+ */
 	char *const info = generate_stacktrace();
 	fprintf(stderr, "%s", info);
 	free(info);
