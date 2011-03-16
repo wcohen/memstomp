@@ -225,7 +225,7 @@ static char ** translate_addresses_vec(
 		} else {
 			char const *name = arg.functionname;
 			if (name == NULL || *name == '\0')
-				name = "??";
+				name = "\?\?";
 			if (arg.filename != NULL) {
 				char *h;
 
