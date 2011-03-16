@@ -90,15 +90,10 @@ static pid_t _gettid(void) {
         return (pid_t) syscall(SYS_gettid);
 }
 
-static const char *get_prname(void) {
-        static char prname[17];
-        int r;
-
-        r = prctl(PR_GET_NAME, prname);
+static const char *get_prname(char prname[17]) {
+        int const r = prctl(PR_GET_NAME, prname);
         assert(r == 0);
-
         prname[16] = 0;
-
         return prname;
 }
 
@@ -175,8 +170,9 @@ static void setup(void) {
 
         initialized = true;
 
+	char prname[17];
         fprintf(stderr, "memstomp: "PACKAGE_VERSION" sucessfully initialized for process %s (pid %lu).\n",
-                get_prname(), (unsigned long) getpid());
+                get_prname(prname), (unsigned long) getpid());
 }
 
 static void show_summary(void) { }
@@ -304,8 +300,10 @@ void backtrace_symbols_fd(void *const *array, int size, int fd) {
 
 static void warn_memcpy(void * dest, const void * src, size_t count)
 {
+	char prname[17];
+
 	fprintf(stderr, "memcpy(%p, %p, %ld) overlap for %s(%d)\n",
-		dest, src, count, get_prname(), getpid());
+		dest, src, count, get_prname(prname), getpid());
 	/* generate stack backtrace */
 	char *const info = generate_stacktrace();
 	fprintf(stderr, "%s", info);
