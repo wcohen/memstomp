@@ -139,51 +139,6 @@ static void find_address_in_section(
 		arg->pc - vma, &arg->filename, &arg->functionname, &arg->line);
 }
 
-/* Read hexadecimal addresses from stdin, translate into
-   file_name:line_number and optionally function name.  */
-#if 0
-static void translate_addresses(bfd *abfd, char (*addr)[PTRSTR_LEN], int naddr)
-{
-	while (naddr) {
-		pc = bfd_scan_vma(addr[naddr-1], NULL, 16);
-
-		found = false;
-		bfd_map_over_sections(abfd, find_address_in_section,
-		(PTR) NULL);
-
-		if (!found) {
-			printf("[%s] \?\?() \?\?:0\n",addr[naddr-1]);
-		} else {
-			const char *name;
-
-			name = functionname;
-			if (name == NULL || *name == '\0')
-				name = "??";
-			if (filename != NULL) {
-				char *h;
-
-				h = strrchr(filename, '/');
-				if (h != NULL)
-					filename = h + 1;
-			}
-
-			printf("\t%s:%u\t", filename ? filename : "??",
-			       line);
-
-			printf("%s()\n", name);
-
-		}
-
-		/* fflush() is essential for using this command as a server
-		   child process that reads addresses from a pipe and responds
-		   with line number information, processing one address at a
-		   time.  */
-		fflush(stdout);
-		naddr--;
-	}
-}
-#endif
-
 static char ** translate_addresses_vec(
 	bfd *const abfd,
 	bfd_vma const addr[],
