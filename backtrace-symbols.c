@@ -239,11 +239,11 @@ static char **process_file(
 
 #define MAX_DEPTH 16
 
-struct file_match {
-	char const *file;
-	void const *address;
-	void const *base;
-	void const *hdr;
+struct file_match {  /* INput or OUTput w.r.t. find_matching_file() */
+	char const *file;     /* OUT */
+	void const *address;  /* IN */
+	void const *base;     /* OUT */
+	ElfW(Phdr) const *phdr;     /* OUT */
 };
 
 static int find_matching_file(struct dl_phdr_info *const info,
@@ -262,6 +262,7 @@ static int find_matching_file(struct dl_phdr_info *const info,
 				/* we found a match */
 				match->file = info->dlpi_name;
 				match->base = (void *) info->dlpi_addr;
+				match->phdr = phdr;
 				return 1;  /* first match is good enough */
 			}
 		}
