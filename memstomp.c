@@ -311,7 +311,9 @@ static void warn_memcpy(void * dest, const void * src, size_t count)
 	fprintf(stderr, "memcpy(%p, %p, %ld) overlap for %s(%d)\n",
 		dest, src, count, get_prname(), getpid());
 	/* generate stack backtrace */
-	fprintf(stderr, "%s", generate_stacktrace());
+	char *const info = generate_stacktrace();
+	fprintf(stderr, "%s", info);
+	free(info);
 }
 
 
