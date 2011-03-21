@@ -194,12 +194,6 @@ static char ** translate_addresses_buf(
 	int naddr
 )
 {
-	int const naddr_orig = naddr;
-	char b;
-	int total  = 0;
-	enum { Count, Print } state;
-	char *buf = &b;
-	int len = 0;
 	char **ret_buf = NULL;
 	bmos_arg arg; memset(&arg, 0, sizeof(arg));
 	arg.syms = slurp_symtab(abfd);
@@ -207,22 +201,31 @@ static char ** translate_addresses_buf(
 	/* iterate over the formating twice.
 	 * the first time we count how much space we need
 	 * the second time we do the actual printing */
+	int const naddr_orig = naddr;
+	char b;  /* space for terminating '\0' in Count state */
+	char *buf = &b;
+	int len = 0;  /* snprintf limit for *buf */
+	int total  = 0;
+
+	enum { Count, Print } state;
 	for (state=Count; state<=Print; state++) {
 	if (state == Print) {
+		naddr = naddr_orig;
 		ret_buf = malloc(total + sizeof(char *)*naddr);
 		buf = (char *)(ret_buf + naddr);
 		len = total;
 	}
-	while (naddr) {
+	while (--naddr >= 0) {
 		if (state == Print)
-			ret_buf[naddr-1] = buf;
-		arg.pc = addr[naddr-1];
+			ret_buf[naddr] = buf;
+		arg.pc = addr[naddr];
 
 		arg.found = false;
 		bfd_map_over_sections(abfd, find_address_in_section, &arg);
 
 		if (!arg.found) {
-			total += snprintf(buf, len, "[0x%llx] \?\?() \?\?:0",(long long unsigned int) addr[naddr-1]) + 1;
+			total += 1+ snprintf(buf, len,
+				"[%p] \?\?() \?\?:0",(void *)addr[naddr]);
 		} else {
 			char const *name = arg.functionname;
 			if (name == NULL || *name == '\0')
@@ -235,17 +238,15 @@ static char ** translate_addresses_buf(
 					arg.filename = h + 1;
 			}
 			total += snprintf(buf, len, "%s:%u\t%s()",
-				(arg.filename ? arg.filename : "??"),
+				(arg.filename ? arg.filename : "\?\?"),
 			       arg.line, name) + 1;
 
 		}
 		if (state == Print) {
 			/* set buf just past the end of string */
-			buf = buf + total + 1;
+			buf += total + 1;
 		}
-		naddr--;
 	}
-	naddr = naddr_orig;
 	}
 
 	if (arg.syms != NULL) {
