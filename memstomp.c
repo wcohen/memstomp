@@ -218,22 +218,18 @@ static bool verify_frame(const char *s) {
 }
 
 static char* generate_stacktrace(void) {
-        void **buffer;
         char **strings, *ret, *p;
         int n, i;
         size_t k;
         bool b;
 
-        buffer = malloc(sizeof(void*) * frames_max);
-        assert(buffer);
+        void **const buffer = alloca(sizeof(void*) * frames_max);
 
         n = real_backtrace(buffer, frames_max);
         assert(n >= 0);
 
         strings = real_backtrace_symbols(buffer, n);
         assert(strings);
-
-        free(buffer);
 
         k = 0;
         for (i = 0; i < n; i++)

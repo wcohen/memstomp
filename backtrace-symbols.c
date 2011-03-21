@@ -45,6 +45,7 @@
 #define false 0
 
 #define _GNU_SOURCE
+#include <alloca.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -328,11 +329,10 @@ char **backtrace_symbols(void *const *buffer, int size)
 	/* discard calling function */
 	int total = 0;
 
-	char ***locations;
 	char **final;
 	char *f_strings;
 
-	locations = malloc(sizeof(char **) * (stack_depth+1));
+	char ***const locations = alloca(sizeof(char **) * (stack_depth+1));
 
 	bfd_init();
 	for(x=stack_depth, y=0; x>=0; x--, y++){
@@ -362,8 +362,6 @@ char **backtrace_symbols(void *const *buffer, int size)
 		final[x] = f_strings;
 		f_strings += strlen(f_strings) + 1;
 	}
-
-	free(locations);
 
 	return final;
 }
