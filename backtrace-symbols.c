@@ -80,23 +80,19 @@ static void load_funcs(void)
 #endif
 
 
-static asymbol **syms;		/* Symbol table.  */
-
 /* 150 isn't special; it's just an arbitrary non-ASCII char value.  */
 #define OPTION_DEMANGLER	(150)
 
-static void slurp_symtab(bfd * abfd);
-static void find_address_in_section(bfd *abfd, asection *section, void *data);
-
 /* Read in the symbol table.  */
 
-static void slurp_symtab(bfd * abfd)
+static asymbol **slurp_symtab(bfd *const abfd)
 {
+	asymbol **syms = NULL;
 	long symcount;
 	unsigned int size;
 
 	if ((bfd_get_file_flags(abfd) & HAS_SYMS) == 0)
-		return;
+		return syms;
 
 	symcount = bfd_read_minisymbols(abfd, false, (PTR) & syms, &size);
 	if (symcount == 0)
@@ -105,47 +101,52 @@ static void slurp_symtab(bfd * abfd)
 
 	if (symcount < 0)
 		bfd_fatal(bfd_get_filename(abfd));
+
+	return syms;
 }
 
-/* These global variables are used to pass information between
-   translate_addresses and find_address_in_section.  */
-
-static bfd_vma pc;
-static const char *filename;
-static const char *functionname;
-static unsigned int line;
-static int found;
+typedef struct {
+	asymbol **syms;		/* Symbol table.  */
+	bfd_vma pc;
+	char const *filename;
+	char const *functionname;
+	unsigned int line;
+	int found;  /* result is valid */
+} bmos_arg;
 
 /* Look for an address in a section.  This is called via
    bfd_map_over_sections.  */
 
-static void find_address_in_section(bfd *abfd, asection *section, void *data __attribute__ ((__unused__)) )
+static void find_address_in_section(
+	bfd *const abfd,
+	asection *const section,
+	void *const data
+)
 {
-	bfd_vma vma;
-	bfd_size_type size;
+	bmos_arg *const arg = (bmos_arg *)data;
 
-	if (found)
+	if (arg->found)
 		return;
 
 	if ((bfd_get_section_flags(abfd, section) & SEC_ALLOC) == 0)
 		return;
 
-	vma = bfd_get_section_vma(abfd, section);
-	if (pc < vma)
+	bfd_vma const vma = bfd_get_section_vma(abfd, section);
+	if (arg->pc < vma)
 		return;
 
-	size = bfd_section_size(abfd, section);
-	if (pc >= vma + size)
+	bfd_size_type const size = bfd_section_size(abfd, section);
+	if (arg->pc >= vma + size)
 		return;
 
-	found = bfd_find_nearest_line(abfd, section, syms, pc - vma,
-				      &filename, &functionname, &line);
+	arg->found = bfd_find_nearest_line(abfd, section, arg->syms,
+		arg->pc - vma, &arg->filename, &arg->functionname, &arg->line);
 }
 
 /* Read hexadecimal addresses from stdin, translate into
    file_name:line_number and optionally function name.  */
 #if 0
-static void translate_addresses(bfd * abfd, char (*addr)[PTRSTR_LEN], int naddr)
+static void translate_addresses(bfd *abfd, char (*addr)[PTRSTR_LEN], int naddr)
 {
 	while (naddr) {
 		pc = bfd_scan_vma(addr[naddr-1], NULL, 16);
@@ -187,50 +188,55 @@ static void translate_addresses(bfd * abfd, char (*addr)[PTRSTR_LEN], int naddr)
 }
 #endif
 
-static char** translate_addresses_buf(bfd * abfd, bfd_vma *addr, int naddr)
+static char ** translate_addresses_buf(
+	bfd *const abfd,
+	bfd_vma const *const addr,
+	int naddr
+)
 {
-	int naddr_orig = naddr;
+	int const naddr_orig = naddr;
 	char b;
 	int total  = 0;
 	enum { Count, Print } state;
 	char *buf = &b;
 	int len = 0;
 	char **ret_buf = NULL;
+	bmos_arg arg; memset(&arg, 0, sizeof(arg));
+	arg.syms = slurp_symtab(abfd);
+
 	/* iterate over the formating twice.
 	 * the first time we count how much space we need
 	 * the second time we do the actual printing */
 	for (state=Count; state<=Print; state++) {
 	if (state == Print) {
-		ret_buf = malloc(total + sizeof(char*)*naddr);
-		buf = (char*)(ret_buf + naddr);
+		ret_buf = malloc(total + sizeof(char *)*naddr);
+		buf = (char *)(ret_buf + naddr);
 		len = total;
 	}
 	while (naddr) {
 		if (state == Print)
 			ret_buf[naddr-1] = buf;
-		pc = addr[naddr-1];
+		arg.pc = addr[naddr-1];
 
-		found = false;
-		bfd_map_over_sections(abfd, find_address_in_section,
-		(PTR) NULL);
+		arg.found = false;
+		bfd_map_over_sections(abfd, find_address_in_section, &arg);
 
-		if (!found) {
+		if (!arg.found) {
 			total += snprintf(buf, len, "[0x%llx] \?\?() \?\?:0",(long long unsigned int) addr[naddr-1]) + 1;
 		} else {
-			const char *name;
-
-			name = functionname;
+			const char *name = arg.functionname;
 			if (name == NULL || *name == '\0')
 				name = "??";
-			if (filename != NULL) {
+			if (arg.filename != NULL) {
 				char *h;
 
-				h = strrchr(filename, '/');
+				h = strrchr(arg.filename, '/');
 				if (h != NULL)
-					filename = h + 1;
+					arg.filename = h + 1;
 			}
-			total += snprintf(buf, len, "%s:%u\t%s()", filename ? filename : "??",
-			       line, name) + 1;
+			total += snprintf(buf, len, "%s:%u\t%s()",
+				(arg.filename ? arg.filename : "??"),
+			       arg.line, name) + 1;
 
 		}
 		if (state == Print) {
@@ -241,11 +247,19 @@ static char** translate_addresses_buf(bfd * abfd, bfd_vma *addr, int naddr)
 	}
 	naddr = naddr_orig;
 	}
+
+	if (arg.syms != NULL) {
+		free(arg.syms);
+	}
 	return ret_buf;
 }
 /* Process a file.  */
 
-static char **process_file(const char *file_name, bfd_vma *addr, int naddr)
+static char **process_file(
+	const char *const file_name,
+	bfd_vma const *const addr,
+	int const naddr
+)
 {
 	bfd *abfd;
 	char **matching;
@@ -269,14 +283,7 @@ static char **process_file(const char *file_name, bfd_vma *addr, int naddr)
 		xexit(1);
 	}
 
-	slurp_symtab(abfd);
-
 	ret_buf = translate_addresses_buf(abfd, addr, naddr);
-
-	if (syms != NULL) {
-		free(syms);
-		syms = NULL;
-	}
 
 	bfd_close(abfd);
 	return ret_buf;
@@ -303,10 +310,11 @@ static int find_matching_file(struct dl_phdr_info *info,
 	for (n = info->dlpi_phnum; --n >= 0; phdr++) {
 		if (phdr->p_type == PT_LOAD) {
 			ElfW(Addr) vaddr = phdr->p_vaddr + load_base;
-			if (match->address >= (void*) vaddr && match->address < (void*) ((char*) vaddr + phdr->p_memsz)) {
+			if (match->address >= (void*) vaddr && match->address < (void*) ((char *) vaddr + phdr->p_memsz)) {
 				/* we found a match */
 				match->file = info->dlpi_name;
 				match->base = (void*) info->dlpi_addr;
+				return 1;  /* first match is good enough */
 			}
 		}
 	}
@@ -324,15 +332,15 @@ char **backtrace_symbols(void *const *buffer, int size)
 	char **final;
 	char *f_strings;
 
-	locations = malloc(sizeof(char**) * (stack_depth+1));
+	locations = malloc(sizeof(char **) * (stack_depth+1));
 
 	bfd_init();
 	for(x=stack_depth, y=0; x>=0; x--, y++){
-		struct file_match match = { .address = buffer[x] };
 		char **ret_buf;
-		bfd_vma addr;
+		struct file_match match; memset(&match, 0, sizeof(match));
+		match.address = buffer[x];
 		dl_iterate_phdr(find_matching_file, &match);
-		addr = (char*) buffer[x] - (char*) match.base;
+		bfd_vma const addr = (char *) buffer[x] - (char *) match.base;
 		if (match.file && strlen(match.file))
 			ret_buf = process_file(match.file, &addr, 1);
 		else
@@ -341,11 +349,11 @@ char **backtrace_symbols(void *const *buffer, int size)
 		total += strlen(ret_buf[0]) + 1;
 	}
 
-	/* allocate the array of char* we are going to return and extra space for
+	/* allocate the array of char * we are going to return and extra space for
 	 * all of the strings */
-	final = malloc(total + (stack_depth + 1) * sizeof(char*));
+	final = malloc(total + (stack_depth + 1) * sizeof(char *));
 	/* get a pointer to the extra space */
-	f_strings = (char*)(final + stack_depth + 1);
+	f_strings = (char *)(final + stack_depth + 1);
 
 	/* fill in all of strings and pointers */
 	for(x=stack_depth; x>=0; x--){
