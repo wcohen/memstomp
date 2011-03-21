@@ -89,13 +89,12 @@ static void load_funcs(void)
 static asymbol **slurp_symtab(bfd *const abfd)
 {
 	asymbol **syms = NULL;
-	long symcount;
-	unsigned int size;
 
 	if ((bfd_get_file_flags(abfd) & HAS_SYMS) == 0)
 		return syms;
 
-	symcount = bfd_read_minisymbols(abfd, false, (PTR) & syms, &size);
+	unsigned int size;
+	long symcount = bfd_read_minisymbols(abfd, false, (PTR) & syms, &size);
 	if (symcount == 0)
 		symcount = bfd_read_minisymbols(abfd, true /* dynamic */ ,
 						(PTR) & syms, &size);
@@ -225,7 +224,7 @@ static char ** translate_addresses_buf(
 		if (!arg.found) {
 			total += snprintf(buf, len, "[0x%llx] \?\?() \?\?:0",(long long unsigned int) addr[naddr-1]) + 1;
 		} else {
-			const char *name = arg.functionname;
+			char const *name = arg.functionname;
 			if (name == NULL || *name == '\0')
 				name = "??";
 			if (arg.filename != NULL) {
@@ -257,16 +256,12 @@ static char ** translate_addresses_buf(
 /* Process a file.  */
 
 static char **process_file(
-	const char *const file_name,
+	char const *const file_name,
 	bfd_vma const *const addr,
 	int const naddr
 )
 {
-	bfd *abfd;
-	char **matching;
-	char **ret_buf;
-
-	abfd = bfd_openr(file_name, NULL);
+	bfd *const abfd = bfd_openr(file_name, NULL);
 
 	if (abfd == NULL)
 		bfd_fatal(file_name);
@@ -274,6 +269,7 @@ static char **process_file(
 	if (bfd_check_format(abfd, bfd_archive))
 		fatal("%s: can not get addresses from archive", file_name);
 
+	char **matching;
 	if (!bfd_check_format_matches(abfd, bfd_object, &matching)) {
 		bfd_nonfatal(bfd_get_filename(abfd));
 		if (bfd_get_error() ==
@@ -284,8 +280,7 @@ static char **process_file(
 		xexit(1);
 	}
 
-	ret_buf = translate_addresses_buf(abfd, addr, naddr);
-
+	char **const ret_buf = translate_addresses_buf(abfd, addr, naddr);
 	bfd_close(abfd);
 	return ret_buf;
 }
@@ -293,33 +288,33 @@ static char **process_file(
 #define MAX_DEPTH 16
 
 struct file_match {
-	const char *file;
+	char const *file;
 	void const *address;
 	void const *base;
 	void const *hdr;
 };
 
-static int find_matching_file(struct dl_phdr_info *info,
-		size_t size, void *data)
+static int find_matching_file(struct dl_phdr_info *const info,
+		size_t const size, void *const data)
 {
-	struct file_match *match = data;
+	struct file_match *const match = data;
 	/* This code is modeled from Gfind_proc_info-lsb.c:callback() from libunwind */
-	long n;
-	const ElfW(Phdr) *phdr;
-	ElfW(Addr) load_base = info->dlpi_addr;
-	phdr = info->dlpi_phdr;
+	ElfW(Addr) const load_base = info->dlpi_addr;
+	ElfW(Phdr) const *phdr = info->dlpi_phdr;
+	int n;
 	for (n = info->dlpi_phnum; --n >= 0; phdr++) {
 		if (phdr->p_type == PT_LOAD) {
-			ElfW(Addr) vaddr = phdr->p_vaddr + load_base;
-			if (match->address >= (void*) vaddr && match->address < (void*) ((char *) vaddr + phdr->p_memsz)) {
+			ElfW(Addr) const vaddr = phdr->p_vaddr + load_base;
+			if (match->address >= (void *) vaddr
+			&&  match->address <  (void *)((char *) vaddr + phdr->p_memsz)) {
 				/* we found a match */
 				match->file = info->dlpi_name;
-				match->base = (void*) info->dlpi_addr;
+				match->base = (void *) info->dlpi_addr;
 				return 1;  /* first match is good enough */
 			}
 		}
 	}
-	return 0;
+	return 0;  /* keep looking */
 }
 
 char **backtrace_symbols(void /*const*/ *const *const vector, int const length)
