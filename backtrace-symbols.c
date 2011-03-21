@@ -294,9 +294,9 @@ static char **process_file(
 
 struct file_match {
 	const char *file;
-	void *address;
-	void *base;
-	void *hdr;
+	void const *address;
+	void const *base;
+	void const *hdr;
 };
 
 static int find_matching_file(struct dl_phdr_info *info,
@@ -322,41 +322,36 @@ static int find_matching_file(struct dl_phdr_info *info,
 	return 0;
 }
 
-char **backtrace_symbols(void *const *buffer, int size)
+char **backtrace_symbols(void /*const*/ *const *const vector, int const length)
 {
-	int stack_depth = size - 1;
-	int x,y;
 	/* discard calling function */
+	int const stack_depth = length - 1;
+
 	int total = 0;
-
-	char **final;
-	char *f_strings;
-
 	char ***const locations = alloca(sizeof(char **) * (stack_depth+1));
 
 	bfd_init();
-	for(x=stack_depth, y=0; x>=0; x--, y++){
-		char **ret_buf;
+	int x;
+	for (x=stack_depth; x>=0; x--) {
 		struct file_match match; memset(&match, 0, sizeof(match));
-		match.address = buffer[x];
+		match.address = vector[x];
 		dl_iterate_phdr(find_matching_file, &match);
-		bfd_vma const addr = (char *) buffer[x] - (char *) match.base;
+		bfd_vma const addr = (char *) vector[x] - (char *) match.base;
 		if (match.file && strlen(match.file))
-			ret_buf = process_file(match.file, &addr, 1);
+			locations[x] = process_file(match.file, &addr, 1);
 		else
-			ret_buf = process_file("/proc/self/exe", &addr, 1);
-		locations[x] = ret_buf;
-		total += strlen(ret_buf[0]) + 1;
+			locations[x] = process_file("/proc/self/exe", &addr, 1);
+		total += strlen(locations[x][0]) + 1;
 	}
 
 	/* allocate the array of char * we are going to return and extra space for
 	 * all of the strings */
-	final = malloc(total + (stack_depth + 1) * sizeof(char *));
+	char **const final = malloc(total + (stack_depth + 1) * sizeof(char *));
 	/* get a pointer to the extra space */
-	f_strings = (char *)(final + stack_depth + 1);
+	char *f_strings = (char *)(final + stack_depth + 1);
 
 	/* fill in all of strings and pointers */
-	for(x=stack_depth; x>=0; x--){
+	for (x=stack_depth; x>=0; x--) {
 		strcpy(f_strings, locations[x][0]);
 		free(locations[x]);
 		final[x] = f_strings;
