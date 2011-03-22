@@ -202,9 +202,7 @@ static bool verify_frame(const char *s) {
         return true;
 }
 
-#include <sys/uio.h>
-
-static void generate_stacktrace(int const fd)
+static char* generate_stacktrace(void)
 {
         void *retaddr[frames_max];  /* c99 or gcc extension */
         int const n = real_backtrace(retaddr, frames_max);
@@ -213,18 +211,42 @@ static void generate_stacktrace(int const fd)
         char **const strings = real_backtrace_symbols(retaddr, n);
         assert(strings);
 
-	struct iovec iov[3];
-	iov[0].iov_base = "\t";
-	iov[0].iov_len = 1;
-	iov[2].iov_base = "\n";
-	iov[2].iov_len = 1;
-	
+        char *ret;
+	{
+		size_t k = 0;
+		int i;
+		for (i = 0; i < n; i++)
+			k += strlen(strings[i]) + 2;
+
+		ret = malloc(k + 1);
+	}
+        assert(ret);
+
+	char *p;
         int i;
-        for (i = 0; i < n; i++) if (strings[i]) {
-		iov[1].iov_base = strings[i];
-		iov[1].iov_len = strlen(strings[i]);
-		writev(fd, iov, 3);
+	bool b = false;
+        for (i = 0, p = ret; i < n; i++) {
+                if (!b && !verify_frame(strings[i]))
+                        continue;
+
+                if (!b && i > 0) {
+                        /* Skip all but the first stack frame of ours */
+                        *(p++) = '\t';
+                        strcpy(p, strings[i-1]);
+                        p += strlen(strings[i-1]);
+                        *(p++) = '\n';
+                }
+
+                b = true;
+
+                *(p++) = '\t';
+                strcpy(p, strings[i]);
+                p += strlen(strings[i]);
+                *(p++) = '\n';
         }
+        *p = 0;
+        free(strings);
+        return ret;
 }
 
 int backtrace(void **array, int size)
@@ -268,7 +290,9 @@ static void warn_memcpy(void * dest, const void * src, size_t count)
  * then this is not async signal safe.  But the write() above will produce
  * some evidence before any possible trouble below.
  */
-	generate_stacktrace(STDERR_FILENO);
+	char *const info = generate_stacktrace();
+	fprintf(stderr, "%s", info);
+	free(info);
 }
 
 
