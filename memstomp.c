@@ -77,10 +77,6 @@ static volatile bool initialized = false;
 static void setup(void) __attribute ((constructor));
 static void shutdown(void) __attribute ((destructor));
 
-static pid_t _gettid(void) {
-        return (pid_t) syscall(SYS_gettid);
-}
-
 static const char *get_prname(char prname[17]) {
         int const r = prctl(PR_GET_NAME, prname);
         assert(r == 0);
