@@ -313,8 +313,7 @@ static void warn_memcpy(void * dest, const void * src, size_t count)
 
 void * memcpy(void * dest, const void * src, size_t count)
 {
-	size_t distance = (dest > src) ? ((char *)dest - (char *)src)
-		: ((char *) src - (char *) dest);
+	size_t distance = __builtin_abs(((char *)dest - (char *)src));
 	
 	/* Check for overlap. */
 	if (distance < count) {
