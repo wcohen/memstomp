@@ -2,7 +2,10 @@
 #*
 *#
 .#*
+aclocal.m4
 autom4te.cache/
+configure
+config.h.in
 cscope.files
 cscope*out
 gmon.out
