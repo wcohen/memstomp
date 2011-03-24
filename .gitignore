@@ -2,7 +2,7 @@
 #*
 *#
 .#*
-autom4te.*
+autom4te.cache/
 cscope.files
 cscope*out
 gmon.out
