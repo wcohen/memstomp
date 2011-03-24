@@ -44,6 +44,9 @@
 #include <signal.h>
 #define ABRT_TRAP raise(SIGSEGV)
 
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
+
 static bool abrt_trap = false;
 
 #ifndef SCHED_RESET_ON_FORK
@@ -294,10 +297,10 @@ static void warn_memcpy(void * dest, const void * src, size_t count)
 
 void * memcpy(void * dest, const void * src, size_t count)
 {
-	size_t distance = __builtin_abs(((char *)dest - (char *)src));
+	size_t d = (char *)dest - (char *)src;
 	
 	/* Check for overlap. */
-	if (distance < count) {
+	if (unlikely(d < count || -d < count)) {
 		if (abrt_trap) ABRT_TRAP;
 		/* report the overlap */
 		warn_memcpy(dest, src, count);
