@@ -22,6 +22,20 @@
 
 #include "config.h"
 
+/* Get all #define from cdefs.h, including __restrict and __restrict_arr */
+#include <sys/cdefs.h>
+
+/* C99 keyword 'restrict' implies no overlap, thus a really good compiler
+ * could remove as superfluous our explicit checks for overlap.
+ * Therefore omit 'restrict' for the functions that we check.
+ * This file must be compiled using:
+ *	gcc -D_GNU_SOURCE -fno-builtin
+ */
+#undef  __restrict
+#define __restrict /*empty*/
+#undef  __restrict_arr
+#define __restrict_arr /*empty*/
+
 #include <execinfo.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -42,6 +56,7 @@
 #endif
 
 #include <signal.h>
+#include <wchar.h>
 #define ABRT_TRAP raise(SIGSEGV)
 
 #define likely(x)	__builtin_expect(!!(x), 1)
@@ -266,24 +281,24 @@ void backtrace_symbols_fd(void *const *array, int size, int fd)
         real_backtrace_symbols_fd(array, size, fd);
 }
 
-static int imin(int a, int b)
+static unsigned umin(unsigned a, unsigned b)
 {
 	return (a <= b) ? a : b;
 }
 
-static void warn_memcpy(void * dest, const void * src, size_t count)
+static void warn_copylap(void * dest, const void * src, size_t count, char const *name)
 {
 	char prname[17];
-	char buf[128];
+	char buf[160];
 
 /* Avoid fprintf which is not async signal safe.  fprintf may call malloc,
  * which may experience trouble if the bad memcpy was called from a signal
  * handler whose invoking signal interrupted malloc.
  */
 	int const j = snprintf(buf, sizeof(buf),
-		"\n\nmemcpy(%p, %p, %ld) overlap for %s(%d)\n",
-		dest, src, count, get_prname(prname), getpid());
-	write(STDERR_FILENO, buf, imin(j, sizeof(buf)));
+		"\n\n%s(dest=%p, src=%p, bytes=%lu) overlap for %s(%d)\n",
+		name, dest, src, count, get_prname(prname), getpid());
+	write(STDERR_FILENO, buf, umin(j, sizeof(buf)));
 	
 /* If generate_stacktrace() indirectly invokes malloc (such as via libbfd),
  * then this is not async signal safe.  But the write() above will produce
@@ -294,8 +309,7 @@ static void warn_memcpy(void * dest, const void * src, size_t count)
 	free(info);
 }
 
-
-void * memcpy(void * dest, const void * src, size_t count)
+static void *copy(void *dest, void const *src, size_t count, char const *name)
 {
 	size_t d = (char *)dest - (char *)src;
 	
@@ -303,8 +317,175 @@ void * memcpy(void * dest, const void * src, size_t count)
 	if (unlikely(d < count || -d < count)) {
 		if (abrt_trap) ABRT_TRAP;
 		/* report the overlap */
-		warn_memcpy(dest, src, count);
+		warn_copylap(dest, src, count, name);
 	}
 	/* be safe use memmove */
 	return memmove(dest, src, count);
 }
+
+void *memcpy(void *dst, const void *src, size_t count)
+{
+	return copy(dst, src, count, "memcpy");
+}
+
+wchar_t *wmemcpy(wchar_t *dst, wchar_t const *src, size_t n)
+{
+	return copy(dst, src, sizeof(*src) * n, "wmemcpy");
+}
+
+char *strcat(char *dst, char const *src)
+{
+	copy(&dst[strlen(dst)], src, 1+ strlen(src), "strcat");
+	return dst;
+}
+
+wchar_t *wcscat(wchar_t *dst, wchar_t const *src)
+{
+	copy(&dst[wcslen(dst)], src, sizeof(*src) * (1+ wcslen(src)), "wcscat");
+	return dst;
+}
+
+char *strncat(char *dst, char const *src, size_t n)
+{
+	char *const join = &dst[strlen(dst)];
+	char const *const nulp = memchr(src, 0, n);
+	if (!nulp) {
+		/* 'restrict' still covers '\0' */
+		if (unlikely(&join[n] == src || &src[n] == join))
+			warn_copylap(join, src, 1+ n, "strncat");
+		copy(join, src, n, "strncat");
+		join[n] = '\0';
+		return dst;
+	}
+	/* Check overlap of SRC and '\0' at resulting DST. */
+	size_t const lsrc = nulp - src;
+	copy(join, src, 1+ lsrc, "strncat");
+	join[lsrc] = '\0';
+	return dst;
+}
+
+wchar_t *wcsncat(wchar_t *dst, wchar_t const *src, size_t n)
+{
+	wchar_t *const join = &dst[wcslen(dst)];
+	wchar_t const *const nulp = wmemchr(src, 0, n);
+	if (!nulp) {
+		/* 'restrict' still covers L'\0' */
+		if (unlikely(&join[n] == src || &src[n] == join))
+			warn_copylap(join, src, sizeof(*src) * (1+ n),
+				"wcsncat");
+		copy(join, src, sizeof(*src) * n, "wcsncat");
+		join[n] = L'\0';
+		return dst;
+	}
+	/* Check overlap of SRC and L'\0' at resulting DST. */
+	size_t const lsrc = (char const *)nulp - (char const *)src;
+	copy(join, src, sizeof(*src) + lsrc, "wcsncat");
+	join[lsrc] = L'\0';
+	return dst;
+}
+
+char *strcpy(char *dst, char const *src)
+{
+	return copy(dst, src, 1+ strlen(src), "strcpy");
+}
+
+wchar_t *wcscpy(wchar_t *dst, wchar_t const *src)
+{
+	return copy(dst, src, sizeof(*src) * (1+ wcslen(src)), "wcscpy");
+}
+
+void *memccpy(void *dst, void const *src, int c, size_t n)
+{
+	char const *const nulp = memchr(src, c, n);
+	if (!nulp) {
+		copy(dst, src, n, "memccpy");
+		return NULL;
+	}
+	size_t const n2 = 1+ (nulp - (char const *)src);  /* <= n */
+	copy(dst, src, n2, "memccpy");
+	return n2 + (char *)dst;  /* after copied c */
+}
+
+char *strncpy(char *dst, char const *src, size_t n)
+{
+	char const *const nulp = memchr(src, 0, n);
+	if (!nulp)  /* will be no '\0' terminator on DST */
+		return copy(dst, src, n, "strncpy");
+
+	/* Asymmetric case: '\0' fill at end of DST. */
+	size_t const lsrc = nulp - src;  /* < n */
+	size_t const d = src - dst;
+	if ( d < n           /* DST overlaps beginning of SRC. */
+	||  -d < (1+ lsrc))  /* SRC overlaps beginning of DST. */
+		warn_copylap(dst, src, n, "strncpy");
+
+	/* Could tail merge on memmove by doing memset first,
+	 * but doing memmove first is friendlier if overlap.
+	 */
+	memmove(dst, src, lsrc);
+	memset(&dst[lsrc], 0, n - lsrc);
+	return dst;
+}
+
+wchar_t *wcsncpy(wchar_t *dst, wchar_t const *src, size_t n)
+{
+	char const *const nulp = (char const *)wmemchr(src, 0, n);
+	/* Convert to byte length. */
+	n *= sizeof(*src);
+	if (!nulp)  /* no '\0' terminator on DST */
+		return copy(dst, src, n, "wcsncpy");
+
+	/* Asymmetric case: '\0' fill at end of DST. */
+	size_t const lsrc = nulp - (char const *)src;
+	size_t const d = (char *)src - (char *)dst;
+	if ( d <  n                      /* DST overlaps beginning of SRC. */
+	||  -d < (sizeof(*src) + lsrc))  /* SRC overlaps beginning of DST. */
+		warn_copylap(dst, src, n, "wcsncpy");
+
+	/* Could tail merge on memmove by doing memset first,
+	 * but doing memmove first is friendlier if overlap.
+	 */
+	memmove(dst, src, lsrc);
+	memset(&dst[lsrc], 0, n - lsrc);
+	return dst;
+}
+
+void *mempcpy(void *dst, void const *src, size_t n)
+{
+	return n + (char *)copy(dst, src, n, "mempcpy");
+}
+
+wchar_t *wmempcpy(wchar_t *dst, wchar_t const *src, size_t n)
+{
+	size_t const size = sizeof(*src) * n;
+	return size + copy(dst, src, size, "wmempcpy");
+}
+
+char *stpcpy(char *dst, char const *src)
+{
+	size_t const len = strlen(src);
+	return len + copy(dst, src, 1+ len, "stpcpy");
+}
+
+char *stpncpy(char *dst, char const *src, size_t n)
+{
+	char const *const nulp = memchr(src, 0, n);
+	if (!nulp) { /* no '\0' terminator on DST */
+		copy(dst, src, n, "stpncpy");
+		return &dst[n];
+	}
+
+	/* Asymmetric case: '\0' fill at end of DST. */
+	size_t const lsrc = nulp - src;
+	size_t const d = src - dst;
+	if ( d < n           /* DST overlaps beginning of SRC. */
+	||  -d < (1+ lsrc))  /* SRC overlaps beginning of DST. */
+		warn_copylap(dst, src, n, "stpncpy");
+	memmove(dst, src, lsrc);
+	return memset(&dst[lsrc], 0, n - lsrc);
+}
+
+/* XXX strtok, strtok_r, strsep:  Ugly! */
+
+/* XXX wcstok: Ugly! */
+
