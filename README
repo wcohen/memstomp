@@ -1,10 +1,10 @@
 MEMSTOMP memcpy checker
 
 GIT:
-        git://fedorapeople.org/home/fedora/wcohen/public_git/memstomp
+        https://github.com/wcohen/memstomp.git
 
 GITWEB:
-	http://fedorapeople.org/gitweb?p=wcohen/public_git/memstomp;a=summary
+	https://github.com/wcohen/memstomp/
 
 NOTES:
 	memstomp checks the operation of memcpy. In particular memstomp
