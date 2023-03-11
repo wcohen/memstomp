@@ -25,7 +25,7 @@ AC_CONFIG_SRCDIR([memstomp.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR(m4)
 
-AM_INIT_AUTOMAKE([foreign 1.10 -Wall -Wno-portability tar-pax])
+AM_INIT_AUTOMAKE([foreign 1.10 -Wall -Wno-portability tar-pax dejagnu])
 
 AC_SUBST(PACKAGE_URL, [http://wcohen.fedorapeople.org/git/memstomp/])
 

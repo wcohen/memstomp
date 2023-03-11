@@ -1,0 +1,15 @@
+proc find_memstomp {} {
+  global tool_root_dir 
+  global base_dir
+
+  set file [findfile $base_dir/../memstomp $base_dir/../memstomp memstomp]
+  return $file
+}
+
+proc find_libmemstomp {} {
+  global tool_root_dir 
+  global base_dir
+
+  set file [findfile $base_dir/../.libs/libmemstomp.so $base_dir/../.libs/libmemstomp.so libmemstomp.so]
+  return $file
+}

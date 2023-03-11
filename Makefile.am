@@ -86,3 +86,24 @@ dist-gzip:
 	(cd $(srcdir); git archive --prefix=memstomp-$(VERSION)/ --format=tar HEAD) | gzip > memstomp-$(VERSION).tar.gz
 
 ACLOCAL_AMFLAGS = -I m4
+
+check-DEJAGNU: site.exp
+	if [ -d testsuite ]; then \
+	  true; \
+	else \
+	  mkdir testsuite; \
+	fi
+	rm -f testsuite/site.exp
+	cp site.exp testsuite/site.exp
+	rootme=`pwd`; export rootme; \
+	srcdir=`cd ${srcdir}; pwd` ; export srcdir ; \
+	LC_ALL=C; export LC_ALL; \
+	EXPECT=${EXPECT} ; export EXPECT ; \
+	runtest=$(RUNTEST); \
+	cd testsuite; \
+	if $(SHELL) -c "$$runtest --version" > /dev/null 2>&1; then \
+	  $$runtest --tool $(DEJATOOL) --srcdir $${srcdir}/testsuite \
+		$(RUNTESTFLAGS); \
+	else echo "WARNING: could not find \`runtest'" 1>&2; :;\
+	fi
+
