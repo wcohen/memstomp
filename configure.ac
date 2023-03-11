@@ -72,8 +72,10 @@ AC_CHECK_HEADERS([sys/poll.h])
 AC_CHECK_HEADERS([sys/ioctl.h])
 AC_CHECK_HEADERS([byteswap.h])
 
+AC_SEARCH_LIBS([htab_find_slot], [iberty], [], [AC_MSG_ERROR([*** libiberty not found])])
+AC_CHECK_HEADERS([libiberty.h], [], [AC_MSG_ERROR([*** libiberty.h header not found])])
 AC_SEARCH_LIBS([bfd_init], [bfd], [], [AC_MSG_ERROR([*** libbfd not found])])
-AC_CHECK_HEADERS([bfd.h], [], [AC_MSG_ERROR([*** POSIX caps headers not found])])
+AC_CHECK_HEADERS([bfd.h], [], [AC_MSG_ERROR([*** bfd.h header not found])])
 
 #### Typdefs, structures, etc. ####
 
