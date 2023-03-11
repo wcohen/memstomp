@@ -1,0 +1,69 @@
+.\" This is a comment
+.\" Contact Owen@thelinuxblog.com
+.TH MEMSTOMP 1 "09 April 2013" "0.1.4"
+.SH NAME
+memstomp \- detect function calls with overlapping memory regions
+.SH SYNOPSIS
+.B  memstomp
+.RB [ \-dk ]
+.I  application
+.RI [ argument ...]
+.PP
+.B  memstomp
+.B  \-h
+.SH DESCRIPTION
+The
+.B memstomp
+utility identifies function calls that use overlapping memory regions in situations when such an overlap is not allowed by various standards. When a problem is detected, memstomp displays a backtrace to help you debug the problem, and if executed with the
+.B \-\-debug\-info
+command line option, it even uses the available debugging information. Since the backtrace code is not thread safe, memstomp also allows you to use the
+.B \-\-kill
+option to immediately terminate the analyzed program when an invalid function call is detected.
+.PP
+This version of memstomp inspects the following function calls:
+.BR memcpy (),
+.BR memccpy (),
+.BR mempcpy (),
+.BR strcpy (),
+.BR stpcpy (),
+.BR strncpy (),
+.BR stpncpy (),
+.BR strcat (),
+.BR strncat (),
+.BR wmemcpy (),
+.BR wmempcpy (),
+.BR wcscpy (),
+.BR wcsncpy (),
+.BR wcscat (),
+and
+.BR wcsncat ().
+.SH OPTIONS
+.TP
+.BR \-d ", " \-\-debug\-info
+Make use of debugging information to produce more detailed stack traces.
+.TP
+.BR \-k ", " \-\-kill
+Kill the analyzed application when a problem is detected.
+.TP
+.BR \-h ", " \-\-help
+Display usage information and exit.
+.SH SEE ALSO
+.BR memcpy (3),
+.BR memccpy (3),
+.BR mempcpy (3),
+.BR strcpy (3),
+.BR stpcpy (3),
+.BR strncpy (3),
+.BR stpncpy (3),
+.BR strcat (3),
+.BR strncat (3),
+.BR wmemcpy (3),
+.BR wmempcpy (3),
+.BR wcscpy (3),
+.BR wcsncpy (3),
+.BR wcscat (3),
+.BR wcsncat (3)
+.SH AUTHORS
+Lennart Poettering <lennart@poettering.net>
+.br
+William Cohen <wcohen@redhat.com>

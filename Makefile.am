@@ -34,6 +34,8 @@ lib_LTLIBRARIES = \
 bin_SCRIPTS = \
 	memstomp
 
+man1_MANS = memstomp.man
+
 CLEANFILES = \
 	memstomp
 
