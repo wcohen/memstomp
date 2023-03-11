@@ -62,6 +62,18 @@
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
 
+#undef strcmp
+#undef strncmp
+#undef strdup
+#undef strndup
+#undef strchr
+#undef strrchr
+#undef strcspn
+#undef strspn
+#undef strpbrk
+#undef strtok_r
+#undef memcmp
+
 static bool abrt_trap = false;
 
 static bool quiet_mode = false;
@@ -316,6 +328,29 @@ static void warn_copylap(void * dest, const void * src, size_t count, char const
 	free(info);
 }
 
+static void warn_null(char const *name)
+{
+	char prname[17];
+	char buf[160];
+
+/* Avoid fprintf which is not async signal safe.  fprintf may call malloc,
+ * which may experience trouble if the bad memcpy was called from a signal
+ * handler whose invoking signal interrupted malloc.
+ */
+	int const j = snprintf(buf, sizeof(buf),
+		"\n\n%s NULL pointer %s(%d)\n",
+		name, get_prname(prname), getpid());
+	write(STDERR_FILENO, buf, umin(j, sizeof(buf)));
+	
+/* If generate_stacktrace() indirectly invokes malloc (such as via libbfd),
+ * then this is not async signal safe.  But the write() above will produce
+ * some evidence before any possible trouble below.
+ */
+	char *const info = generate_stacktrace();
+	fprintf(stderr, "%s", info);
+	free(info);
+}
+
 static void *copy(void *dest, void const *src, size_t count, char const *name)
 {
 	size_t d = (char *)dest - (char *)src;
@@ -326,6 +361,7 @@ static void *copy(void *dest, void const *src, size_t count, char const *name)
 		/* report the overlap */
 		warn_copylap(dest, src, count, name);
 	}
+
 	/* be safe use memmove */
 	return memmove(dest, src, count);
 }
@@ -495,4 +531,426 @@ char *stpncpy(char *dst, char const *src, size_t n)
 /* XXX strtok, strtok_r, strsep:  Ugly! */
 
 /* XXX wcstok: Ugly! */
+
+/* All the interposition routines below are just checking for NULL
+   arguments when ISO demands they be non-null.  */
+
+void *memmove (void *dest, const void *src, size_t n)
+{
+  static void * (*real_memmove)(void *, const void *, size_t) = NULL;
+  if (!real_memmove)
+	real_memmove = dlsym(RTLD_NEXT, "memmove");
+
+  if (unlikely (dest == NULL || src == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("memmove");
+	return 0;
+  }
+
+  return real_memmove (dest, src, n);
+}
+
+int memcmp (const void *__s1, const void *__s2, size_t __n)
+{
+  static int (*real_memcmp)(const void *, const void *, size_t) = NULL;
+  if (!real_memcmp)
+	real_memcmp = dlsym(RTLD_NEXT, "memcmp");
+
+  if (unlikely (__s1 == NULL || __s2 == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("memcmp");
+	return 0;
+  }
+
+  return real_memcmp (__s1, __s2, __n);
+}
+
+int strcmp (const char *__s1, const char *__s2)
+{
+  static int (*real_strcmp)(const char *, const char *) = NULL;
+  if (!real_strcmp)
+	real_strcmp = dlsym(RTLD_NEXT, "strcmp");
+
+  if (unlikely (__s1 == NULL || __s2 == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strcmp");
+	return 0;
+  }
+
+  return real_strcmp (__s1, __s2);
+}
+
+int strncmp (const char *__s1, const char *__s2, size_t __n)
+{
+  static int (*real_strncmp)(const char *, const char *, size_t) = NULL;
+  if (!real_strncmp)
+	real_strncmp = dlsym(RTLD_NEXT, "strncmp");
+
+  if (unlikely (__s1 == NULL || __s2 == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strncmp");
+	return 0;
+  }
+
+  return real_strncmp (__s1, __s2, __n);
+}
+
+int strcoll (const char *__s1, const char *__s2)
+{
+  static int (*real_strcoll)(const char *, const char *) = NULL;
+  if (!real_strcoll)
+	real_strcoll = dlsym(RTLD_NEXT, "strcoll");
+
+  if (unlikely (__s1 == NULL || __s2 == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strcoll");
+	return 0;
+  }
+
+  return real_strcoll (__s1, __s2);
+}
+
+int strcoll_l (const char *__s1, const char *__s2, __locale_t __l)
+{
+  static int (*real_strcoll_l)(const char *, const char *, __locale_t) = NULL;
+  if (!real_strcoll_l)
+	real_strcoll_l = dlsym(RTLD_NEXT, "strcoll_l");
+
+  if (unlikely (__s1 == NULL || __s2 == NULL || __l == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strcoll_l");
+	return 0;
+  }
+
+  return real_strcoll_l (__s1, __s2, __l);
+}
+
+size_t strxfrm (char *__dest, const char *__src, size_t __n)
+{
+  static size_t (*real_strxfrm)(char *, const char *, size_t) = NULL;
+  if (!real_strxfrm)
+	real_strxfrm = dlsym(RTLD_NEXT, "strxfrm");
+
+  if (unlikely (__src == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strxfrm");
+	return 0;
+  }
+
+  return real_strxfrm (__dest, __src, __n);
+}
+
+size_t strxfrm_l (char *__dest, const char *__src, size_t __n, __locale_t __l)
+{
+  static size_t (*real_strxfrm_l)(char *, const char *, size_t, __locale_t) = NULL;
+  if (!real_strxfrm_l)
+	real_strxfrm_l = dlsym(RTLD_NEXT, "strxfrm_l");
+
+  if (unlikely (__src == NULL || __l == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strxfrm_l");
+	return 0;
+  }
+
+  return real_strxfrm_l (__dest, __src, __n, __l);
+}
+
+
+void *memset (void *__s, int __c, size_t __n)
+{
+  static void * (*real_memset)(void *, int, size_t) = NULL;
+  if (!real_memset)
+	real_memset = dlsym(RTLD_NEXT, "memset");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("memset");
+	return 0;
+  }
+
+  return real_memset (__s, __c, __n);
+}
+
+void *memchr (const void *__s, int __c, size_t __n)
+{
+  static void * (*real_memchr)(const void *, int, size_t) = NULL;
+  if (!real_memchr)
+	real_memchr = dlsym(RTLD_NEXT, "memchr");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("memchr");
+	return 0;
+  }
+
+  return real_memchr (__s, __c, __n);
+}
+
+void *memrchr (const void *__s, int __c, size_t __n)
+{
+  static void * (*real_memrchr)(const void *, int, size_t) = NULL;
+  if (!real_memrchr)
+	real_memrchr = dlsym(RTLD_NEXT, "memrchr");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("memrchr");
+	return 0;
+  }
+
+  return real_memrchr (__s, __c, __n);
+}
+
+void *rawmemchr (const void *__s, int __c)
+{
+  static void * (*real_rawmemchr)(const void *, int, size_t) = NULL;
+  if (!real_rawmemchr)
+	real_rawmemchr = dlsym(RTLD_NEXT, "rawmemchr");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("rawmemchr");
+	return 0;
+  }
+
+  return real_rawmemchr (__s, __c, __c);
+}
+
+size_t strlen (const char *__s)
+{
+  static size_t (*real_strlen)(const char *) = NULL;
+  if (!real_strlen)
+	real_strlen = dlsym(RTLD_NEXT, "strlen");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strlen");
+	return 0;
+  }
+
+  return real_strlen (__s);
+}
+
+char *strdup (const char *__s)
+{
+  static char *(*real_strdup)(const char *) = NULL;
+  if (!real_strdup)
+	real_strdup = dlsym(RTLD_NEXT, "strdup");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strdup");
+	return 0;
+  }
+
+  return real_strdup (__s);
+}
+
+char *strndup (const char *__s, size_t __n)
+{
+  static char *(*real_strndup)(const char *, size_t) = NULL;
+  if (!real_strndup)
+	real_strndup = dlsym(RTLD_NEXT, "strndup");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strndup");
+	return 0;
+  }
+
+  return real_strndup (__s, __n);
+}
+
+char *strchr (const char *__s, int __c)
+{
+  static char * (*real_strchr)(const void *, int) = NULL;
+  if (!real_strchr)
+	real_strchr = dlsym(RTLD_NEXT, "strchr");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strchr");
+	return 0;
+  }
+
+  return real_strchr (__s, __c);
+}
+
+char *strrchr (const char *__s, int __c)
+{
+  static char * (*real_strrchr)(const void *, int) = NULL;
+  if (!real_strrchr)
+	real_strrchr = dlsym(RTLD_NEXT, "strrchr");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strrchr");
+	return 0;
+  }
+
+  return real_strrchr (__s, __c);
+}
+
+char *strchrnul (const char *__s, int __c)
+{
+  static char * (*real_strchrnul)(const void *, int) = NULL;
+  if (!real_strchrnul)
+	real_strchrnul = dlsym(RTLD_NEXT, "strchrnul");
+
+  if (unlikely (__s == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strchrnul");
+	return 0;
+  }
+
+  return real_strchrnul (__s, __c);
+}
+
+size_t strcspn (const char *__s, const char *__reject)
+{
+  static size_t (*real_strcspn)(const void *, const char *) = NULL;
+  if (!real_strcspn)
+	real_strcspn = dlsym(RTLD_NEXT, "strcspn");
+
+  if (unlikely (__s == NULL || __reject == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strcspn");
+	return 0;
+  }
+
+  return real_strcspn (__s, __reject);
+}
+
+size_t strspn (const char *__s, const char *__accept)
+{
+  static size_t (*real_strspn)(const void *, const char *) = NULL;
+  if (!real_strspn)
+	real_strspn = dlsym(RTLD_NEXT, "strspn");
+
+  if (unlikely (__s == NULL || __accept == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strspn");
+	return 0;
+  }
+
+  return real_strspn (__s, __accept);
+}
+
+char * strpbrk (const char *__s, const char *__accept)
+{
+  static char * (*real_strpbrk)(const void *, const char *) = NULL;
+  if (!real_strpbrk)
+	real_strpbrk = dlsym(RTLD_NEXT, "strpbrk");
+
+  if (unlikely (__s == NULL || __accept == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strpbrk");
+	return 0;
+  }
+
+  return real_strpbrk (__s, __accept);
+}
+
+char * strstr (const char *__haystack, const char *__needle)
+{
+  static char * (*real_strstr)(const void *, const char *) = NULL;
+  if (!real_strstr)
+	real_strstr = dlsym(RTLD_NEXT, "strstr");
+
+  if (unlikely (__haystack == NULL || __needle == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strstr");
+	return 0;
+  }
+
+  return real_strstr (__haystack, __needle);
+}
+
+char *strcasestr (const char *__haystack, const char *__needle)
+{
+  static char * (*real_strcasestr)(const void *, const char *) = NULL;
+  if (!real_strcasestr)
+	real_strcasestr = dlsym(RTLD_NEXT, "strcasestr");
+
+  if (unlikely (__haystack == NULL || __needle == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strcasestr");
+	return 0;
+  }
+
+  return real_strcasestr (__haystack, __needle);
+}
+
+void *memmem (const void *__haystack, size_t __haystacklen,
+	      const void *__needle, size_t __needlelen)
+{
+  static char * (*real_memmem)(const void *, size_t, const char *, size_t) = NULL;
+  if (!real_memmem)
+	real_memmem = dlsym(RTLD_NEXT, "memmem");
+
+  if (unlikely (__haystack == NULL || __needle == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("memmem");
+	return 0;
+  }
+
+  return real_memmem (__haystack, __haystacklen, __needle, __needlelen);
+}
+
+char * strtok (char *__s, const char *__delim)
+{
+  static char * (*real_strtok)(void *, const char *) = NULL;
+  if (!real_strtok)
+	real_strtok = dlsym(RTLD_NEXT, "strtok");
+
+  if (unlikely (__delim == NULL)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strtok");
+	return 0;
+  }
+
+  return real_strtok (__s, __delim);
+}
+
+
+char * strtok_r (char *__s, const char *__delim, char **__save_ptr)
+{
+  static char * (*real_strtok_r)(void *, const char *, char **) = NULL;
+  if (!real_strtok_r)
+	real_strtok_r = dlsym(RTLD_NEXT, "strtok_r");
+
+  if (unlikely (__delim == NULL || __save_ptr)) {
+	if (abrt_trap) ABRT_TRAP;
+	/* report the NULL pointer */
+	warn_null("strtok_r");
+	return 0;
+  }
+
+  return real_strtok_r (__s, __delim, __save_ptr);
+}
 

@@ -1,0 +1,59 @@
+# Copyright (C) 2013 Free Software Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
+#
+# This was originally copied from GCC's dejagnu testing framework
+#
+
+load_lib memstomp.exp
+set memstomp [find_memstomp]
+set libmemstomp [find_libmemstomp]
+
+if $tracelevel then {
+    strace $tracelevel
+}
+
+#
+# main test loop
+#
+
+proc compile-and-execute { sources } {
+  global memstomp
+  global libmemstomp
+
+  set src [lindex $sources 0]
+
+  if {[catch {exec gcc -fno-builtin $src} results]} {
+    fail "$src compilation $results"
+  } else {
+    pass "$src compilation $results"
+  }
+
+  catch {exec /bin/bash -c "LD_PRELOAD=$libmemstomp $memstomp ./a.out"} results
+  if {[regexp "NULL pointer" $results]} {
+    pass "$src found NULL $results"
+  } else {
+    fail "$src found NULL $results"
+  }
+}
+
+foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.c]] {
+    # If we're only testing specific files and this isn't one of them, skip it.
+    if ![runtest_file_p $runtests $src] then {
+        continue
+    }
+
+   compile-and-execute $src
+}

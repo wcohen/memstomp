@@ -53,6 +53,8 @@ libmemstomp_la_LIBADD = \
 	-ldl
 libmemstomp_la_CFLAGS = \
 	$(PTHREAD_CFLAGS) \
+	-fno-tree-vrp \
+	-fno-delete-null-pointer-checks \
 	-DSONAME=\"libmemstomp.so\"
 
 libmemstomp_backtrace_symbols_la_SOURCES = \
@@ -68,7 +70,7 @@ libmemstomp_backtrace_symbols_la_LIBADD = \
 	-lrt \
 	-ldl
 libmemstomp_backtrace_symbols_la_CFLAGS = \
-	$(PTHREAD_CFLAGS)
+	$(PTHREAD_CFLAGS) 
 
 memstomp: memstomp.in Makefile
 	sed -e 's,@PACKAGE_STRING\@,$(PACKAGE_STRING),g' \
