@@ -90,10 +90,10 @@ static asymbol **slurp_symtab(bfd *const abfd)
 		return syms;
 
 	unsigned int size;
-	long symcount = bfd_read_minisymbols(abfd, false, (PTR) & syms, &size);
+	long symcount = bfd_read_minisymbols(abfd, false, (void *) & syms, &size);
 	if (symcount == 0)
 		symcount = bfd_read_minisymbols(abfd, true /* dynamic */ ,
-						(PTR) & syms, &size);
+						(void *) & syms, &size);
 
 	if (symcount < 0)
 		bfd_fatal(bfd_get_filename(abfd));
