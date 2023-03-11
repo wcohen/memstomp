@@ -13,3 +13,11 @@ proc find_libmemstomp {} {
   set file [findfile $base_dir/../.libs/libmemstomp.so $base_dir/../.libs/libmemstomp.so libmemstomp.so]
   return $file
 }
+
+proc find_libmemstomp_backtrace_symbols {} {
+  global tool_root_dir 
+  global base_dir
+
+  set file [findfile $base_dir/../.libs/libmemstomp-backtrace-symbols.so $base_dir/../.libs/libmemstomp-backtrace-symbols.so libmemstomp-backtrace-symbols.so]
+  return $file
+}

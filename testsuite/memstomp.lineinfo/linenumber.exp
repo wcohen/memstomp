@@ -1,0 +1,65 @@
+# Copyright (C) 2014 Free Software Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
+#
+# This was originally copied from GCC's dejagnu testing framework
+#
+# This is a hack.  If we need more of these tests we'll want to use
+# something like dj's framework so that we can mark the lines where
+# we want errors/warnings.
+#
+
+load_lib memstomp.exp
+set libmemstomp [find_libmemstomp]
+set libmemstomp_backtrace_symbols [find_libmemstomp_backtrace_symbols]
+
+if $tracelevel then {
+    strace $tracelevel
+}
+
+#
+# main test loop
+#
+
+proc compile-and-execute { sources } {
+  global libmemstomp
+  global libmemstomp_backtrace_symbols
+
+  set src [lindex $sources 0]
+
+  if {[catch {exec gcc -g -fno-builtin $src} results]} {
+    fail "$src compilation $results"
+  } else {
+    pass "$src compilation $results"
+  }
+
+  # ARM's unwinder seems broken
+  setup_xfail arm*-*-*
+  catch {exec /bin/bash -c "LD_PRELOAD=$libmemstomp:$libmemstomp_backtrace_symbols ./a.out"} results
+  if {[regexp "linenumber.c:8" $results]} {
+    pass "$src found overlap on right line $results"
+  } else {
+    fail "$src found overlap on right line $results"
+  }
+}
+
+foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.c]] {
+    # If we're only testing specific files and this isn't one of them, skip it.
+    if ![runtest_file_p $runtests $src] then {
+        continue
+    }
+
+   compile-and-execute $src
+}

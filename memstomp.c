@@ -241,6 +241,16 @@ static char* generate_stacktrace(void)
         int const n = real_backtrace(retaddr, frames_max);
         assert(n >= 0);
 
+	/* Adjust the frame addresses since they point to the next
+	   instruction to execute, not the call site which may be
+	   associated with different line numbers. 
+
+	   For the cases we care about in memstomp, just subtracting
+	   1 works the vast majority of the time.  It may not work for
+	   a tail-call into an intercepted routine though.  */
+	for (int i = 0; i < n; i++)
+		retaddr[i]--;
+	    
         char **const strings = real_backtrace_symbols(retaddr, n);
         assert(strings);
 
