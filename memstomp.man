@@ -47,6 +47,9 @@ Kill the analyzed application when a problem is detected.
 .TP
 .BR \-h ", " \-\-help
 Display usage information and exit.
+.TP
+.BR \-q ", " \-\-quiet
+Be less verbose
 .SH SEE ALSO
 .BR memcpy (3),
 .BR memccpy (3),

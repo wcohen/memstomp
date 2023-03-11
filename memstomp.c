@@ -64,6 +64,8 @@
 
 static bool abrt_trap = false;
 
+static bool quiet_mode = false;
+
 #ifndef SCHED_RESET_ON_FORK
 /* "Your libc lacks the definition of SCHED_RESET_ON_FORK. We'll now
  * define it ourselves, however make sure your kernel is new
@@ -162,7 +164,10 @@ static void setup(void) {
         if (LIKELY(initialized))
                 return;
 
-        if (!dlsym(NULL, "main"))
+        if (getenv("MEMSTOMP_QUIET"))
+                quiet_mode = true;
+
+        if (!dlsym(NULL, "main") && !quiet_mode)
                 fprintf(stderr,
                         "memstomp: Application appears to be compiled without -rdynamic. It might be a\n"
                         "memstomp: good idea to recompile with -rdynamic enabled since this produces more\n"
@@ -173,9 +178,11 @@ static void setup(void) {
 
         initialized = true;
 
-	char prname[17];
-        fprintf(stderr, "memstomp: "PACKAGE_VERSION" successfully initialized for process %s (pid %lu).\n",
-                get_prname(prname), (unsigned long) getpid());
+        if (!quiet_mode) {
+                char prname[17];
+                fprintf(stderr, "memstomp: "PACKAGE_VERSION" successfully initialized for process %s (pid %lu).\n",
+                        get_prname(prname), (unsigned long) getpid());
+        }
 }
 
 static void show_summary(void) { }
