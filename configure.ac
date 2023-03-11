@@ -76,6 +76,8 @@ AC_SEARCH_LIBS([htab_find_slot], [iberty], [], [AC_MSG_ERROR([*** libiberty not 
 AC_CHECK_HEADERS([libiberty.h], [], [AC_MSG_ERROR([*** libiberty.h header not found])])
 AC_SEARCH_LIBS([bfd_init], [bfd], [], [AC_MSG_ERROR([*** libbfd not found])])
 AC_CHECK_HEADERS([bfd.h], [], [AC_MSG_ERROR([*** bfd.h header not found])])
+# Newer binutils-2.40 also need to link with sframe library
+AC_SEARCH_LIBS(sframe_decode, sframe)
 
 #### Typdefs, structures, etc. ####
 
