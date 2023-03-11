@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
 TYPE *p1 = &arr1[0];
 TYPE *p2 = &arr2[1];
 size_t count = 9;
+
+int
 main ()
 {
   return MEMCPY (NULL, NULL, 0) == 0 ;

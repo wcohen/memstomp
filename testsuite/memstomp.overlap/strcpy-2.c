@@ -10,6 +10,8 @@
 char arr[32] = "this is a test";
 char *p1 = &arr[0];
 char *p2 = &arr[1];
+
+int
 main ()
 {
   STRCPY (p1, p2);
