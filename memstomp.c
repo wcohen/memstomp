@@ -174,7 +174,7 @@ static void setup(void) {
         initialized = true;
 
 	char prname[17];
-        fprintf(stderr, "memstomp: "PACKAGE_VERSION" sucessfully initialized for process %s (pid %lu).\n",
+        fprintf(stderr, "memstomp: "PACKAGE_VERSION" successfully initialized for process %s (pid %lu).\n",
                 get_prname(prname), (unsigned long) getpid());
 }
 
