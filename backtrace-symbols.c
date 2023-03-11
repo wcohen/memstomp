@@ -124,14 +124,14 @@ static void find_address_in_section(
 	if (arg->found)
 		return;
 
-	if ((bfd_get_section_flags(abfd, section) & SEC_ALLOC) == 0)
+	if ((bfd_section_flags(section) & SEC_ALLOC) == 0)
 		return;
 
-	bfd_vma const vma = bfd_get_section_vma(abfd, section);
+	bfd_vma const vma = bfd_section_vma(section);
 	if (arg->pc < vma)
 		return;
 
-	bfd_size_type const size = bfd_section_size(abfd, section);
+	bfd_size_type const size = bfd_section_size(section);
 	if (arg->pc >= vma + size)
 		return;
 
